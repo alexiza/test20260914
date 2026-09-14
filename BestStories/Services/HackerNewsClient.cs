@@ -24,13 +24,46 @@ public class HackerNewsClient(IHttpClientFactory httpFactory, IMemoryCache cache
     private readonly IMemoryCache _cache = cache;
     private readonly HnOptions _opts = options?.Value ?? new HnOptions();
     private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
+    private readonly ConcurrentDictionary<string, SemaphoreSlim> _locks = new();
+
+    private async Task<T?> GetOrCreateWithLockAsync<T>(string key, TimeSpan expiration, Func<Task<T?>> factory)
+        where T : class
+    {
+        if (_cache.TryGetValue<T>(key, out var existing))
+        {
+            return existing;
+        }
+
+        var sem = _locks.GetOrAdd(key, _ => new SemaphoreSlim(1, 1));
+        await sem.WaitAsync();
+        try
+        {
+            if (_cache.TryGetValue<T>(key, out existing))
+            {
+                return existing;
+            }
+
+            var value = await factory();
+
+            if (value is not null)
+            {
+                _cache.Set(key, value, new MemoryCacheEntryOptions { AbsoluteExpirationRelativeToNow = expiration });
+            }
+
+            return value;
+        }
+        finally
+        {
+            sem.Release();
+            _locks.TryRemove(key, out _);
+        }
+    }
 
     private async Task<Story?> GetStoryAsync(int id, HttpClient client, CancellationToken ct)
     {
         var cacheKey = $"hn:item:{id}";
-        var item = await _cache.GetOrCreateAsync(cacheKey, async entry =>
+        var item = await GetOrCreateWithLockAsync<HackerNewsItem>(cacheKey, TimeSpan.FromMinutes(_opts.ItemCacheMinutes), async () =>
         {
-            entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(_opts.ItemCacheMinutes);
             var r = await client.GetAsync($"item/{id}.json", ct);
             if (!r.IsSuccessStatusCode) return null;
             var body = await r.Content.ReadAsStringAsync(ct);
@@ -64,14 +97,13 @@ public class HackerNewsClient(IHttpClientFactory httpFactory, IMemoryCache cache
 
         var client = _httpFactory.CreateClient("hn");
 
-        var ids = await _cache.GetOrCreateAsync("hn:bestIds", async entry =>
+        var ids = await GetOrCreateWithLockAsync<int[]>("hn:bestIds", TimeSpan.FromSeconds(_opts.BestIdsCacheSeconds), async () =>
         {
-            entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(_opts.BestIdsCacheSeconds);
             var resp = await client.GetAsync("beststories.json", cancellationToken);
             resp.EnsureSuccessStatusCode();
             var s = await resp.Content.ReadAsStringAsync(cancellationToken);
-            return JsonSerializer.Deserialize<int[]>(s, _jsonOptions) ?? [];
-        }) ?? [];
+            return JsonSerializer.Deserialize<int[]>(s, _jsonOptions) ?? Array.Empty<int>();
+        }) ?? Array.Empty<int>();
 
         var bag = new ConcurrentBag<Story>();
 
