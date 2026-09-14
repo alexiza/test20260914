@@ -1,7 +1,3 @@
-using System.Collections.Generic;
-using System.Net.Http;
-using System.Threading;
-using System.Threading.Tasks;
 using BestStories.Controllers;
 using BestStories.Models;
 using BestStories.Services;

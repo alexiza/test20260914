@@ -1,15 +1,10 @@
 using BestStories.Services;
 using Microsoft.Extensions.Caching.Memory;
 using System.Net;
-using System.Net.Http;
 using Moq;
 using Moq.Protected;
-using System.Threading.Tasks;
-using System.Threading;
 using System.Text.Json;
 using Xunit;
-using System;
-using System.Collections.Generic;
 using Microsoft.Extensions.Options;
 
 namespace BestStories.Tests;
