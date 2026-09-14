@@ -10,7 +10,6 @@ public static class HnHttpClientExtensions
     /// </summary>
     public static IServiceCollection AddHnHttpClient(this IServiceCollection services, IConfiguration configuration)
     {
-        var jitterer = new Random();
 
         services.AddHttpClient("hn", c =>
         {
@@ -23,7 +22,7 @@ public static class HnHttpClientExtensions
                 .Handle<HttpRequestException>()
                 .OrResult(msg => ((int)msg.StatusCode) >= 500)
                 .WaitAndRetryAsync(3, retryAttempt =>
-                    TimeSpan.FromMilliseconds(Math.Pow(2, retryAttempt) * 100) + TimeSpan.FromMilliseconds(jitterer.Next(0, 100))
+                    TimeSpan.FromMilliseconds(Math.Pow(2, retryAttempt) * 100) + TimeSpan.FromMilliseconds(Random.Shared.Next(0, 100))
                 );
         });
 
