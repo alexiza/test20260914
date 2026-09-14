@@ -13,4 +13,8 @@ public class HnOptions()
 
     // Maximum count accepted from callers
     public int MaxCount { get; set; } = 500;
+
+    // Global maximum number of concurrent outbound requests to Hacker News across all callers
+    // This is enforced by a Polly BulkheadPolicy applied to the named "hn" HttpClient.
+    public int GlobalMaxConcurrency { get; set; } = 100;
 }
