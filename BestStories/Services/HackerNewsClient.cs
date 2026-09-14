@@ -80,7 +80,7 @@ public class HackerNewsClient(IHttpClientFactory httpFactory, IMemoryCache cache
             Title = item.Title,
             Uri = item.Url,
             PostedBy = item.By,
-            Time = DateTimeOffset.FromUnixTimeSeconds(item.Time).ToString("o"),
+            Time = DateTimeOffset.FromUnixTimeSeconds(item.Time).ToString("yyyy-MM-ddTHH:mm:sszzz"),
             Score = item.Score,
             CommentCount = item.Descendants ?? 0
         };
