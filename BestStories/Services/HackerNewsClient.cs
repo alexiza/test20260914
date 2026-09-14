@@ -1,5 +1,6 @@
 using BestStories.Models;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.Extensions.Options;
 using System.Collections.Concurrent;
 using System.Text.Json;
 
@@ -17,10 +18,11 @@ internal class HackerNewsItem
     public string? Type { get; set; }
 }
 
-public class HackerNewsClient(IHttpClientFactory httpFactory, IMemoryCache cache) : IHackerNewsClient
+public class HackerNewsClient(IHttpClientFactory httpFactory, IMemoryCache cache, IOptions<HnOptions> options) : IHackerNewsClient
 {
     private readonly IHttpClientFactory _httpFactory = httpFactory;
     private readonly IMemoryCache _cache = cache;
+    private readonly HnOptions _opts = options?.Value ?? new HnOptions();
     private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
 
     private async Task<Story?> GetStoryAsync(int id, HttpClient client, CancellationToken ct)
@@ -28,7 +30,7 @@ public class HackerNewsClient(IHttpClientFactory httpFactory, IMemoryCache cache
         var cacheKey = $"hn:item:{id}";
         var item = await _cache.GetOrCreateAsync(cacheKey, async entry =>
         {
-            entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(5);
+            entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromMinutes(_opts.ItemCacheMinutes);
             var r = await client.GetAsync($"item/{id}.json", ct);
             if (!r.IsSuccessStatusCode) return null;
             var body = await r.Content.ReadAsStringAsync(ct);
@@ -64,7 +66,7 @@ public class HackerNewsClient(IHttpClientFactory httpFactory, IMemoryCache cache
 
         var ids = await _cache.GetOrCreateAsync("hn:bestIds", async entry =>
         {
-            entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(60);
+            entry.AbsoluteExpirationRelativeToNow = TimeSpan.FromSeconds(_opts.BestIdsCacheSeconds);
             var resp = await client.GetAsync("beststories.json", cancellationToken);
             resp.EnsureSuccessStatusCode();
             var s = await resp.Content.ReadAsStringAsync(cancellationToken);
@@ -73,7 +75,7 @@ public class HackerNewsClient(IHttpClientFactory httpFactory, IMemoryCache cache
 
         var bag = new ConcurrentBag<Story>();
 
-        var parallelOptions = new ParallelOptions { MaxDegreeOfParallelism = 20, CancellationToken = cancellationToken };
+        var parallelOptions = new ParallelOptions { MaxDegreeOfParallelism = _opts.MaxDegreeOfParallelism, CancellationToken = cancellationToken };
 
         await Parallel.ForEachAsync(ids, parallelOptions, async (id, ct) =>
         {

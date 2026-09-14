@@ -10,20 +10,20 @@ using System.Text.Json;
 using Xunit;
 using System;
 using System.Collections.Generic;
+using Microsoft.Extensions.Options;
 
 namespace BestStories.Tests;
 
-public class HackerNewsClientTests
+public class HackerNewsClientTests()
 {
     private static IHttpClientFactory CreateFactory(HttpClient client)
     {
         return new SimpleFactory(client);
     }
 
-    private class SimpleFactory : IHttpClientFactory
+    private class SimpleFactory(HttpClient client) : IHttpClientFactory
     {
-        private readonly HttpClient _client;
-        public SimpleFactory(HttpClient client) => _client = client;
+        private readonly HttpClient _client = client;
         public HttpClient CreateClient(string name) => _client;
     }
 
@@ -73,7 +73,7 @@ public class HackerNewsClientTests
         var factory = CreateFactory(client);
         var cache = new MemoryCache(new MemoryCacheOptions());
 
-        var hn = new HackerNewsClient(factory, cache);
+        var hn = new HackerNewsClient(factory, cache, Options.Create(new HnOptions()));
 
         var stories = await hn.GetBestStoriesAsync(2, CancellationToken.None);
 
@@ -124,7 +124,7 @@ public class HackerNewsClientTests
         var factory = CreateFactory(client);
         var cache = new MemoryCache(new MemoryCacheOptions());
 
-        var hn = new HackerNewsClient(factory, cache);
+        var hn = new HackerNewsClient(factory, cache, Options.Create(new HnOptions()));
 
         var story = await hn.GetStoryAsync(1, CancellationToken.None);
 
