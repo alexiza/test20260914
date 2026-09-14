@@ -36,6 +36,6 @@ Notes
 - Limits parallel item fetches to reduce remote pressure.
 - Uses IMemoryCache for lightweight in-process caching.
 - Resiliency: the named `hn` HttpClient is configured via `AddHnHttpClient(...)` and includes a Polly `WaitAndRetryAsync` policy with exponential backoff and jitter to handle transient errors.
-- Configuration: `HnOptions` exposes runtime tunables (MaxDegreeOfParallelism, BestIdsCacheSeconds, ItemCacheMinutes, MaxCount) and is bound from configuration.
+- Configuration: `HnOptions` exposes runtime tunables (BaseAddress, TimeoutSeconds, MaxDegreeOfParallelism, BestIdsCacheSeconds, ItemCacheMinutes, GlobalMaxConcurrency, MaxCount) and is bound from configuration (HackerNews section).
 - Tests: the repository includes unit and integration tests (xUnit + WebApplicationFactory) and a `requests.http` file with example requests for IDE convenience.
 - CI: a GitHub Actions workflow runs build and tests and supports `workflow_dispatch` for manual runs.
