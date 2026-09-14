@@ -10,7 +10,7 @@ builder.Services.AddHnHttpClient(builder.Configuration);
 // Bind HackerNews options from configuration
 builder.Services.Configure<HnOptions>(builder.Configuration.GetSection("HackerNews"));
 
-builder.Services.AddScoped<IHackerNewsClient, HackerNewsClient>();
+builder.Services.AddSingleton<IHackerNewsClient, HackerNewsClient>();
 
 var app = builder.Build();
 
