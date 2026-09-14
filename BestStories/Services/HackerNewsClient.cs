@@ -2,6 +2,8 @@ using BestStories.Models;
 using Microsoft.Extensions.Caching.Memory;
 using Microsoft.Extensions.Options;
 using System.Collections.Concurrent;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using System.Text.Json;
 
 namespace BestStories.Services;
@@ -18,12 +20,13 @@ internal class HackerNewsItem
     public string? Type { get; set; }
 }
 
-public class HackerNewsClient(IHttpClientFactory httpFactory, IMemoryCache cache, IOptions<HnOptions> options) : IHackerNewsClient
+public class HackerNewsClient(IHttpClientFactory httpFactory, IMemoryCache cache, IOptions<HnOptions> options, ILogger<HackerNewsClient>? logger = null) : IHackerNewsClient
 {
     private readonly IHttpClientFactory _httpFactory = httpFactory;
     private readonly IMemoryCache _cache = cache;
     private readonly HnOptions _opts = options?.Value ?? new HnOptions();
     private readonly JsonSerializerOptions _jsonOptions = new() { PropertyNameCaseInsensitive = true };
+    private readonly ILogger<HackerNewsClient> _logger = logger ?? NullLogger<HackerNewsClient>.Instance;
     private readonly ConcurrentDictionary<string, SemaphoreSlim> _locks = new();
 
     private async Task<T?> GetOrCreateWithLockAsync<T>(string key, TimeSpan expiration, Func<Task<T?>> factory)
@@ -119,9 +122,15 @@ public class HackerNewsClient(IHttpClientFactory httpFactory, IMemoryCache cache
                     bag.Add(story);
                 }
             }
-            catch
+            catch (OperationCanceledException)
             {
-                // ignore individual failures
+                // preserve cancellation
+                throw;
+            }
+            catch (Exception ex)
+            {
+                // log and continue with other items
+                _logger.LogWarning(ex, "Failed to fetch Hacker News item {Id}", id);
             }
         });
 

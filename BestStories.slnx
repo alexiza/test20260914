@@ -2,6 +2,7 @@
   <Folder Name="/Solution Items/">
     <File Path="doc/Assignement.md" />
     <File Path="README.md" />
+    <File Path="requests.http" />
   </Folder>
   <Project Path="BestStories.Tests/BestStories.Tests.csproj" />
   <Project Path="BestStories/BestStories.csproj" />
