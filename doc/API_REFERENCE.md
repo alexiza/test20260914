@@ -11,7 +11,7 @@ Endpoints
 
 GET /api/beststories
 - Query parameters
-	- count (optional, integer): number of stories to return. Default = 10. Must be > 0 and <= 500.
+	- count (optional, integer): number of stories to return. Default = 10. Must be > 0 and <= MaxCount (configured via HnOptions).
 
 - Success response (200 OK)
 	- Content-Type: application/json
@@ -33,7 +33,7 @@ GET /api/beststories
 - Client errors
 	- 400 Bad Request
 		- When count <= 0
-		- When count > 500
+		- When count > MaxCount
 
 Examples
 
@@ -52,34 +52,49 @@ Behavior & Implementation Notes
 	- The service then fetches individual item details from /v0/item/{id}.json and returns the top N by score.
 
 - Caching
-	- The list of best IDs is cached for 60 seconds to reduce pressure on Hacker News.
-	- Individual item responses are cached for 5 minutes.
-	- Caching is implemented with IMemoryCache in-memory cache. These durations are currently hard-coded in the service and may be changed in code (BestStories/Services/HackerNewsClient.cs).
+	- Caching is implemented with IMemoryCache.
+	- Best story IDs are cached using key `hn:bestIds` for `BestIdsCacheSeconds`.
+	- Individual item responses are cached using key `hn:item:{id}` for `ItemCacheMinutes`.
+	- Cache durations are configuration-driven via the `HackerNews` section (HnOptions).
+	- Per-key semaphore locking is used to reduce cache stampedes on concurrent misses.
 
-- Concurrency
-	- Item fetches are performed in parallel with a configured maximum degree of parallelism (20 by default) to balance speed and remote load.
+- Concurrency, timeout, and resiliency
+	- Item fetches are performed in parallel per request with `MaxDegreeOfParallelism` (default 20).
+	- The named `hn` HttpClient timeout is configurable via `TimeoutSeconds` (default 10 seconds).
+	- A Polly retry policy handles transient failures (5xx responses, HttpRequestException, and timeouts) with exponential backoff + jitter.
+	- A Polly bulkhead policy enforces a global outbound concurrency cap via `GlobalMaxConcurrency` (default 100).
 
 Testing
 
-- Unit tests are included in BestStories.Tests. The tests mock HTTP responses and exercise GetBestStoriesAsync and GetStoryAsync.
+- Unit and integration tests are included in BestStories.Tests (xUnit + WebApplicationFactory).
+- Tests cover both story aggregation behavior and HTTP integration behavior using mocked upstream responses.
 - To run tests locally:
 	dotnet test
 
 Configuration
 
-- To change the base address used to call Hacker News, update the named HttpClient configuration in Program.cs:
-	builder.Services.AddHttpClient("hn", c => { c.BaseAddress = new Uri("https://hacker-news.firebaseio.com/v0/"); });
+- Behavior is configured via the `HackerNews` section and bound to HnOptions.
+- Example configuration:
 
-- To change cache lifetimes or parallelism, edit BestStories/Services/HackerNewsClient.cs.
+```json
+"HackerNews": {
+	"BaseAddress": "https://hacker-news.firebaseio.com/v0/",
+	"TimeoutSeconds": 10,
+	"BestIdsCacheSeconds": 60,
+	"ItemCacheMinutes": 5,
+	"MaxDegreeOfParallelism": 20,
+	"GlobalMaxConcurrency": 100,
+	"MaxCount": 500
+}
+```
 
 Notes and assumptions
 
-- This API intentionally limits the maximum count to 500 to avoid excessive work and network traffic.
+- This API intentionally limits the maximum count to `MaxCount` to avoid excessive work and network traffic.
 - Time is returned in ISO 8601 format (UTC offset preserved).
-- The service does not implement request throttling or API key management — these would be recommended enhancements for production usage.
+- The service uses caching, retries, timeout, and bulkhead isolation to improve resiliency when calling Hacker News.
 
 Enhancements (things to consider given more time)
-- Make cache TTLs and parallelism configurable via appsettings.json.
 - Add request-level rate limiting to protect both this service and Hacker News.
 - Add health and metrics endpoints (Prometheus metrics, health checks).
 - Add integration tests that run against a recorded HTTP response fixture or a local stub server.
