@@ -1,0 +1,35 @@
+# .gitignore for .NET projects
+bin/
+obj/
+.vs/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.ncrunch*
+*.vsix
+*.db
+*.log
+
+# Visual Studio Code
+.vscode/
+
+# Rider
+.idea/
+
+# NuGet
+*.nupkg
+
+# Visual Studio publish
+*.Publish.xml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Local tool and test output
+TestResults/
+
+# BestStories specific
+*.exe
+

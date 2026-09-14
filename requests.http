@@ -1,0 +1,22 @@
+
+@baseUrl = http://localhost:5062
+
+# BestStories API requests
+
+### Get top 1 story
+GET {{baseUrl}}/api/beststories?count=1
+Accept: application/json
+
+### Get top 10 stories
+GET {{baseUrl}}/api/beststories?count=10
+Accept: application/json
+
+### Invalid: count 0 (expect 400)
+GET {{baseUrl}}/api/beststories?count=0
+Accept: application/json
+
+### Invalid: count > 500 (expect 400)
+GET {{baseUrl}}/api/beststories?count=501
+Accept: application/json
+
+###
