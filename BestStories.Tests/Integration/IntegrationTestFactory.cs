@@ -11,7 +11,7 @@ public static class IntegrationTestFactory
     /// Create a WebApplicationFactory configured to use the provided HttpMessageHandler for the named "hn" HttpClient.
     /// An optional configureServices action may be used to register additional test-only services or options.
     /// </summary>
-    public static WebApplicationFactory<Program> CreateFactory(HttpMessageHandler handler, Action<IServiceCollection> configureServices = null)
+    public static WebApplicationFactory<Program> CreateFactory(HttpMessageHandler handler, Action<IServiceCollection>? configureServices = null)
     {
         if (handler is null) throw new ArgumentNullException(nameof(handler));
 
