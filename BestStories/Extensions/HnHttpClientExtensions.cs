@@ -15,11 +15,15 @@ public static class HnHttpClientExtensions
         {
             c.BaseAddress = new Uri(configuration.GetValue<string>("HackerNews:BaseAddress") ?? "https://hacker-news.firebaseio.com/v0/");
             c.DefaultRequestHeaders.UserAgent.ParseAdd("BestStoriesClient/1.0");
+            // Configure a hard timeout on the HttpClient to bound slow upstream calls
+            var timeoutSec = configuration.GetValue<int?>("HackerNews:TimeoutSeconds") ?? 10;
+            c.Timeout = TimeSpan.FromSeconds(timeoutSec);
         })
         .AddPolicyHandler(request =>
         {
             var retry = Policy<HttpResponseMessage>
                 .Handle<HttpRequestException>()
+                .Or<TaskCanceledException>()
                 .OrResult(msg => ((int)msg.StatusCode) >= 500)
                 .WaitAndRetryAsync(3, retryAttempt =>
                     TimeSpan.FromMilliseconds(Math.Pow(2, retryAttempt) * 100) + TimeSpan.FromMilliseconds(Random.Shared.Next(0, 100))

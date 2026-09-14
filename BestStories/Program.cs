@@ -1,6 +1,5 @@
 using BestStories.Services;
 using BestStories.Extensions;
-using Polly;
 
 var builder = WebApplication.CreateBuilder(args);
 

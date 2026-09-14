@@ -17,4 +17,7 @@ public class HnOptions()
     // Global maximum number of concurrent outbound requests to Hacker News across all callers
     // This is enforced by a Polly BulkheadPolicy applied to the named "hn" HttpClient.
     public int GlobalMaxConcurrency { get; set; } = 100;
+
+    // HttpClient timeout for Hacker News requests (seconds)
+    public int TimeoutSeconds { get; set; } = 10;
 }
